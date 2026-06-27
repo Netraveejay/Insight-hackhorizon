@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+*.db
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Env
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Seed data is generated
+backend/app/seed/data/
+backend/data/reports/
+backend/static/

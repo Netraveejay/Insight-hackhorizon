@@ -1,0 +1,199 @@
+version: "1.4"
+channel_weights:
+  csat: 1.0
+  guest_services_inbox: 0.8
+  contact_form: 0.6
+  public_review: 0.4
+  social: 0.4
+staff_weight: 0.9
+confidence_bands:
+  high: 20
+  medium: 8
+high_urgency_keywords:
+  - safety
+  - evacuation
+  - refund
+  - injury
+  - fire
+detection:
+  spike_min_negatives: 4
+  compounding_weeks: 3
+sla:
+  P1:
+    response_hours: 4
+    resolution_hours: 48
+  P2:
+    response_hours: 24
+    resolution_hours: 72
+  P3:
+    response_hours: 48
+    resolution_hours: 168
+translation:
+  target_language: en
+  low_confidence_flag_below: 0.6
+site_size_weights:
+  harbourview: 1.2
+  northgate: 1.1
+  riverside: 1.0
+  eastfield: 1.0
+  parkland: 1.0
+  westgate: 1.0
+  lakeside: 0.9
+  hillcrest: 0.9
+  southbank: 1.0
+  cityplaza: 0.9
+  greenwood: 0.9
+  baytown: 0.9
+  fairmont: 0.9
+  oakridge: 0.9
+  sunset: 0.8
+  meadowbrook: 0.9
+  kingsway: 0.9
+  pinehurst: 0.8
+  crestwood: 0.9
+  maplewood: 0.8
+  brookside: 0.8
+themes:
+  projection_quality:
+    - dim
+    - dark
+    - blurry
+    - "out of focus"
+    - washed out
+    - brightness
+    - lamp
+    - projector
+    - screen
+    - flickering
+    - pixelated
+  audio_sound:
+    - sound
+    - audio
+    - volume
+    - muffled
+    - cut out
+    - speaker
+    - loud
+    - quiet
+    - bass
+  f_and_b:
+    - coffee
+    - popcorn
+    - lukewarm
+    - cold food
+    - candy bar
+    - overpriced food
+    - snack
+    - drink
+    - food
+    - nachos
+    - hot dog
+  cleanliness:
+    - dirty
+    - sticky
+    - smell
+    - toilet
+    - bathroom
+    - rubbish
+    - spill
+    - unclean
+    - messy
+  staff_service:
+    - staff
+    - rude
+    - friendly
+    - helpful
+    - service
+    - usher
+    - manager
+    - attitude
+    - welcoming
+    - polite
+  ticketing_queue:
+    - queue
+    - line
+    - wait
+    - ticket
+    - kiosk
+    - slow
+    - counter
+    - booking
+  booking_app:
+    - app
+    - website
+    - online
+    - mobile
+    - login
+    - crash
+    - seat selection
+    - voucher
+  value_pricing:
+    - expensive
+    - price
+    - value
+    - overpriced
+    - cost
+    - ticket price
+    - membership
+    - deal
+  comfort_seating:
+    - seat
+    - reclining
+    - legroom
+    - uncomfortable
+    - broken
+    - cushion
+    - armrest
+    - cramped
+  accessibility:
+    - wheelchair
+    - accessible
+    - ramp
+    - hearing
+    - caption
+    - subtitle
+    - disability
+    - lift
+    - elevator
+relevance_filter:
+  non_controllable:
+    - "didn't like the film"
+    - plot
+    - ending
+    - "too long"
+    - boring
+    - taste
+    - actor
+    - storyline
+    - director
+sentiment:
+  positive:
+    - great
+    - excellent
+    - amazing
+    - wonderful
+    - friendly
+    - helpful
+    - clean
+    - comfortable
+    - love
+    - best
+    - fantastic
+    - warm
+    - welcoming
+    - polite
+  negative:
+    - terrible
+    - awful
+    - horrible
+    - rude
+    - dirty
+    - slow
+    - broken
+    - disappointed
+    - worst
+    - unacceptable
+    - frustrating
+    - angry
+    - disgusting
+    - overpriced
