@@ -1,0 +1,17 @@
+# Deploy on Render: https://render.com → New → Blueprint → connect this repo
+services:
+  - type: web
+    name: insight
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTO_SEED
+        value: "true"
+      - key: ENABLE_SCHEDULER
+        value: "false"
+      - key: ENVIRONMENT
+        value: production
