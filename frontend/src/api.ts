@@ -59,6 +59,8 @@ export const api = {
   issueDetail: (id: string) => fetchJson<IssueDetail>(`/issues/${id}`),
   trends: (week?: string) => fetchJson<Record<string, unknown>>(`/trends${week ? `?week=${week}` : ''}`),
   digest: (week?: string) => fetchJson<Record<string, unknown>>(`/digest${week ? `?week=${week}` : ''}`),
+  leaderboard: (week?: string) =>
+    fetchJson<LeaderboardData>(`/leaderboard${week ? `?week=${week}` : ''}`),
   summary: (month?: string) => fetchJson<Record<string, unknown>>(`/summary${month ? `?month=${month}` : ''}`),
   sites: () => fetchJson<{ sites: Site[] }>('/sites'),
   siteReport: (id: string, week?: string) =>
@@ -73,13 +75,88 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ question, week }),
     }),
+  assistantSuggestions: () => fetchJson<{ questions: string[] }>('/assistant/suggestions'),
+  assistantStatus: () =>
+    fetchJson<{ ai_enabled: boolean; mode: string; model: string | null; message: string }>('/assistant/status'),
+  assistantChat: (messages: ChatMessage[], week?: string, correlationId?: string) =>
+    fetchJson<AssistantChatResult>('/assistant/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages, week, correlation_id: correlationId }),
+    }),
+  assistantChatStream: async (
+    messages: ChatMessage[],
+    week?: string,
+    correlationId?: string,
+    onToken?: (token: string) => void,
+  ): Promise<{ answer: string; references: AssistantReference[]; correlationId: string; mode?: string } | null> => {
+    try {
+      const res = await fetch(`${API_BASE}/assistant/chat/stream`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ messages, week, correlation_id: correlationId }),
+      });
+      if (!res.ok || !res.body) return null;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let answer = '';
+      let references: AssistantReference[] = [];
+      let cid = '';
+      let mode: string | undefined;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = JSON.parse(line.slice(6));
+          if (data.type === 'meta') {
+            references = data.references || [];
+            cid = data.a2a_correlation_id || '';
+            mode = data.mode;
+          } else if (data.type === 'token') {
+            answer += data.content;
+            onToken?.(data.content);
+          } else if (data.type === 'done' && data.answer) {
+            answer = data.answer;
+          }
+        }
+      }
+      return { answer, references, correlationId: cid, mode };
+    } catch {
+      return null;
+    }
+  },
+  agentRegistry: () =>
+    fetchJson<{ agents: AgentDefinition[]; edges: { from: string; to: string }[] }>('/agents'),
+  a2aMessages: (correlationId: string) =>
+    fetchJson<{ correlation_id: string; messages: A2AMessage[] }>(`/a2a/messages?correlation_id=${correlationId}`),
+  a2aCorrelations: () => fetchJson<{ correlation_ids: string[] }>('/a2a/correlations'),
+  a2aRun: (week?: string) =>
+    fetchJson<PipelineRunResult>(`/a2a/run${week ? `?week=${week}` : ''}`, { method: 'POST' }),
   runPipeline: (week?: string) =>
     fetchJson<PipelineRunResult>(`/pipeline/run${week ? `?week=${week}` : ''}`, { method: 'POST' }),
   pipelineRuns: () => fetchJson<{ runs: PipelineRunSummary[] }>('/pipeline/runs'),
   pipelineExplain: (week?: string) =>
-    fetchJson<{ run_id: string; week: string; explanation: PipelineExplanation }>(
+    fetchJson<{ run_id: string; week: string; explanation: PipelineExplanation; a2a_correlation_id?: string }>(
       `/pipeline/explain${week ? `?week=${week}` : ''}`
     ),
+  pipelineWorkflow: (week?: string) =>
+    fetchJson<{ run_id: string; week: string; correlation_id: string; messages: A2AMessage[] }>(
+      `/pipeline/workflow${week ? `?week=${week}` : ''}`
+    ),
+  agentRuns: (limit?: number) =>
+    fetchJson<{ runs: AgentRunSummary[] }>(`/runs${limit ? `?limit=${limit}` : ''}`),
+  agentRun: (runId: string) => fetchJson<AgentRunDetail>(`/runs/${runId}`),
+  investigateRun: (clusterId: string, week?: string) =>
+    fetchJson<{ run_id: string; run: AgentRunDetail }>('/runs/investigate', {
+      method: 'POST',
+      body: JSON.stringify({ cluster_id: clusterId, week }),
+    }),
+  agenticPipelineRun: (week?: string) =>
+    fetchJson<PipelineRunResult>('/runs/pipeline', {
+      method: 'POST',
+      body: JSON.stringify({ week }),
+    }),
 };
 
 export interface AlertsData {
@@ -198,6 +275,51 @@ export interface PipelineRunResult {
   hero_cluster_id: string | null;
   outputs: { type: string; label: string; count: number }[];
   explanation?: PipelineExplanation | null;
+  a2a_correlation_id?: string | null;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  references?: AssistantReference[];
+}
+
+export interface AssistantReference {
+  cluster_id: string;
+  site_id: string;
+  site_name: string;
+  theme: string;
+  week: string;
+  label: string;
+}
+
+export interface AssistantChatResult {
+  answer: string;
+  references: AssistantReference[];
+  a2a_correlation_id: string;
+  tools_used: string[];
+  mode?: string;
+}
+
+export interface AgentDefinition {
+  id: string;
+  name: string;
+  type: string;
+  role: string;
+  layout_x: number;
+  layout_y: number;
+}
+
+export interface A2AMessage {
+  id: string;
+  ts: string;
+  correlation_id: string;
+  from_agent: string;
+  to_agent: string;
+  intent: string;
+  summary: string;
+  status: string;
+  payload_ref: string | null;
 }
 
 export interface StepExplanation {
@@ -238,6 +360,67 @@ export interface PipelineRunSummary {
   status: string;
   stats: Record<string, unknown>;
   started_at: string | null;
+}
+
+export interface AgentMessage {
+  id: string;
+  seq: number;
+  from_agent: string;
+  to_agent: string;
+  from_label: string;
+  to_label: string;
+  message_type: 'request' | 'response' | 'enrichment' | string;
+  subject: string;
+  artifact_type: string;
+  artifact_count: number;
+  payload_summary: Record<string, unknown>;
+  sample: Record<string, unknown>[];
+  timestamp: string;
+}
+
+export interface AgentWorkflow {
+  run_id: string;
+  week: string;
+  protocol: string;
+  agents: string[];
+  messages: AgentMessage[];
+  summary: string;
+}
+
+export interface AgentTrigger {
+  id: string;
+  type: 'schedule' | 'detection' | 'anomaly' | 'question' | 'manual';
+  source: string;
+  summary: string;
+  ts: string;
+  payload: Record<string, unknown>;
+}
+
+export interface ReasoningStep {
+  run_id: string;
+  step_no: number;
+  agent: string;
+  phase: 'think' | 'act' | 'observe' | 'reflect' | 'final';
+  thought: string;
+  action?: { tool: string; input: Record<string, unknown> } | null;
+  observation?: string | null;
+  ts: string;
+}
+
+export interface AgentRunSummary {
+  id: string;
+  goal: string;
+  runner: string;
+  status: string;
+  outcome: string | null;
+  started_at: string;
+  ended_at: string | null;
+  trigger: AgentTrigger | null;
+}
+
+export interface AgentRunDetail extends AgentRunSummary {
+  correlation_id: string;
+  steps: ReasoningStep[];
 }
 
 export interface Site {
@@ -350,4 +533,46 @@ export interface Issue {
   insight_preview?: string;
   root_cause_summary?: string | null;
   sla_status?: string | null;
+}
+
+export interface LeaderboardSite {
+  site_id: string;
+  site_name: string;
+  efficiency_score: number;
+  sla_compliance_pct: number;
+  issue_handling_pct: number;
+  csat_pct: number;
+  improvement_pct: number;
+  open_p1: number;
+  open_p2: number;
+  open_issues: number;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  theatre_id: string;
+  theatre_name: string;
+  region: string;
+  site_count: number;
+  sites: LeaderboardSite[];
+  efficiency_score: number;
+  sla_compliance_pct: number;
+  issue_handling_pct: number;
+  csat_pct: number;
+  improvement_pct: number;
+  open_p1: number;
+  open_p2: number;
+  open_issues: number;
+  badge: 'top' | null;
+}
+
+export interface LeaderboardData {
+  week: string;
+  prior_week: string | null;
+  top_theatre_id: string | null;
+  top_theatre_name: string | null;
+  methodology: string;
+  entries: LeaderboardEntry[];
+  total_theatres: number;
+  total_sites: number;
 }

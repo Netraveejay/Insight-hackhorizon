@@ -12,6 +12,11 @@ make deploy                   # builds Docker image, starts on :8080
 
 Open **http://localhost:8080** → login **admin** / **insight2026**
 
+### Replit
+
+Import this repo into Replit and click **Run**. See **[REPLIT.md](./REPLIT.md)** for secrets, deployment, and troubleshooting.
+
+
 | Role | Username | Password |
 |------|----------|----------|
 | HQ (all sites) | `admin` | `insight2026` |
@@ -94,7 +99,10 @@ M365 inbox / Google reviews connectors are stubbed for phase 2.
 | `make deploy` | Production Docker deploy (:8080) |
 | `make dev` | Local backend + frontend |
 | `make seed` | Regenerate synthetic data + pipeline |
-| `make test` | Run pytest (15 tests) |
+| `make test` | Run all pytest tests |
+| `make test-unit` | Unit tests only (fast) |
+| `make test-integration` | DB + orchestrator integration |
+| `make test-e2e` | HTTP API end-to-end (TestClient) |
 | `make build-prod` | Build frontend into `backend/static` |
 
 ## Architecture

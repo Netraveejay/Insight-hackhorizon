@@ -1,13 +1,15 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Radio, AlertTriangle, TrendingUp,
-  FileText, MapPin, Bell, Sliders, MessageCircleQuestion, Zap, Download,
+  FileText, MapPin, Bell, Sliders, Download, Network, Brain, Trophy,
 } from 'lucide-react';
 
 const links = [
-  { to: '/pipeline', icon: Zap, label: 'Pipeline Run' },
+  { to: '/agents', icon: Network, label: 'Agent Network' },
+  { to: '/activity', icon: Brain, label: 'Agent Activity' },
   { to: '/reports', icon: Download, label: 'Manager Reports' },
   { to: '/', icon: LayoutDashboard, label: 'Overview' },
+  { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { to: '/feed', icon: Radio, label: 'Live Feed' },
   { to: '/issues', icon: AlertTriangle, label: 'Issues' },
   { to: '/trends', icon: TrendingUp, label: 'Trends' },
@@ -15,7 +17,6 @@ const links = [
   { to: '/sites', icon: MapPin, label: 'Per-Site' },
   { to: '/alerts', icon: Bell, label: 'Teams Alerts' },
   { to: '/rules', icon: Sliders, label: 'Rules Engine' },
-  { to: '/ask', icon: MessageCircleQuestion, label: 'Ask Insight' },
 ];
 
 export default function Sidebar() {

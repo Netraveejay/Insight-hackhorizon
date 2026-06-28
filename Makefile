@@ -17,6 +17,15 @@ seed:
 test:
 	cd backend && RULES_PATH=../rules/rules.v1.yaml .venv/bin/pytest -v
 
+test-unit:
+	cd backend && RULES_PATH=../rules/rules.v1.yaml .venv/bin/pytest -v -m "not integration and not e2e"
+
+test-integration:
+	cd backend && RULES_PATH=../rules/rules.v1.yaml .venv/bin/pytest -v -m integration
+
+test-e2e:
+	cd backend && RULES_PATH=../rules/rules.v1.yaml .venv/bin/pytest -v -m e2e
+
 install:
 	cd backend && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 	cd frontend && npm install

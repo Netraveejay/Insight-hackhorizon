@@ -6,6 +6,10 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.a2a.pipeline_emit import PipelineA2A
+from app.agentic.critic_insight import InsightCriticAgent
+from app.agentic.store import save_trigger
+from app.agentic.triggers import make_trigger
 from app.agents.clustering import ClusteringAgent
 from app.agents.detection import DetectionAgent
 from app.agents.explainability import ExplainabilityAgent
@@ -67,16 +71,33 @@ class Orchestrator:
         self.db.add(run)
         self.db.flush()
 
+        schedule_trigger = make_trigger(
+            "schedule" if cadence == "scheduled" else "manual",
+            "Orchestrator",
+            f"Pipeline started for week {week}",
+            {"week": week, "run_id": run_id, "cadence": cadence},
+        )
+        save_trigger(self.db, schedule_trigger)
+
         steps: list[dict] = []
+        a2a = PipelineA2A(self.db, run_id)
 
         connectors = load_connectors()
+        connector_names = [c.name for c in connectors]
+        a2a.handoff("orchestrator", "connector", f"Fetch raw feedback for week {week}")
         raw_items: list = []
         coverage_entries = []
         for connector in connectors:
             items, cov = connector.fetch(week=None)
             raw_items.extend(items)
             coverage_entries.append(cov)
+        a2a.done("connector", f"{len(raw_items)} items from {', '.join(connector_names)}")
+
+        a2a.handoff("connector", "ingestion", f"{len(raw_items)} raw items · dedupe · PII")
         ingested, coverage_report = self.ingestion.run(raw_items, coverage_entries, rules, run_id)
+        dupes = sum(1 for i in ingested if i.is_duplicate)
+        spam = sum(1 for i in ingested if i.is_spam)
+        a2a.done("ingestion", f"{len(ingested)} normalised · {dupes} dupes · {spam} spam")
         steps.append({
             "id": "ingest",
             "label": "Ingestion",
@@ -97,8 +118,10 @@ class Orchestrator:
                 )
             )
 
+        a2a.handoff("ingestion", "translation", f"{len(ingested)} items · detect language")
         translated, lang_stats = self.translation.run_batch(ingested, rules, run_id, week)
         translated_count = sum(1 for t in translated if t.translated)
+        a2a.done("translation", f"{translated_count} translated · originals retained")
         steps.append({
             "id": "translate",
             "label": "Translation",
@@ -118,6 +141,7 @@ class Orchestrator:
                 )
             )
 
+        a2a.handoff("translation", "scoring", f"{len(translated)} items · rules v{rules.version}")
         scored: list[ScoredItem] = []
         for item in translated:
             write_ingest_audit(self.db, run_id, item)
@@ -128,6 +152,7 @@ class Orchestrator:
                 self.db.merge(self._scored_row(result, run_id))
                 self.db.merge(self._translated_row(item, run_id))
                 write_score_audit(self.db, run_id, result)
+        a2a.done("scoring", f"{len(scored)} scored · {len(translated) - len(scored)} skipped")
         steps.append({
             "id": "score",
             "label": "Scoring",
@@ -136,9 +161,11 @@ class Orchestrator:
             "status": "completed",
         })
 
+        a2a.handoff("scoring", "clustering", f"{len(scored)} items → site×theme×week")
         all_clusters = self.clustering.run(scored, rules)
         current_clusters = [c for c in all_clusters if c.week == week]
         staff_clusters = [c for c in all_clusters if c.source_type in ("staff", "mixed")]
+        a2a.done("clustering", f"{len(current_clusters)} clusters for {week}")
 
         for c in current_clusters:
             self.db.merge(self._cluster_row(c, run_id))
@@ -151,17 +178,41 @@ class Orchestrator:
             "status": "completed",
         })
 
+        a2a.handoff("clustering", "detection", f"{len(current_clusters)} clusters · spike/compounding")
         detections = self.detection.run(current_clusters, all_clusters, staff_clusters, rules)
+        p1_preview = [d for d in detections if d.priority == "P1"]
+        det_summary = f"{len(detections)} flags · {len(p1_preview)} P1"
+        if p1_preview:
+            c0 = next((c for c in current_clusters if c.cluster_id == p1_preview[0].cluster_id), None)
+            if c0:
+                det_summary += f": {c0.site_id}/{c0.theme}"
+        a2a.done("detection", det_summary)
+
         triggered_at = datetime.utcnow()
         cluster_map = {c.cluster_id: c for c in current_clusters}
+        for d in p1_preview:
+            c = cluster_map.get(d.cluster_id)
+            if c:
+                a2a.alert(
+                    "detection",
+                    f"Spike detected — {c.site_id}/{c.theme}. Priority: {d.priority} (High).",
+                    payload_ref=d.cluster_id,
+                )
+
         enriched_detections: list[Detection] = []
+        rc_count = 0
         for d in detections:
             if d.priority:
                 c = cluster_map.get(d.cluster_id)
                 if c:
                     items = [s for s in scored if s.id in c.item_ids]
+                    a2a.handoff("detection", "root_cause", f"Investigate {d.priority} · {c.site_id}/{c.theme}")
                     rc = self.root_cause.run(c, d, items, rules)
+                    rc_count += 1
+                    a2a.done("root_cause", f"{rc.get('category', 'unknown')[:60]}")
+                    a2a.handoff("root_cause", "sla", f"SLA clock for {d.priority}")
                     sla = compute_sla(d.priority, triggered_at, rules.sla)
+                    a2a.done("sla", f"{sla.get('status')} — {d.priority}")
                     d = d.model_copy(update={"root_cause": rc, "sla": sla})
             enriched_detections.append(d)
         detections = enriched_detections
@@ -173,18 +224,25 @@ class Orchestrator:
         steps.append({
             "id": "detect",
             "label": "Detection",
-            "detail": f"{len(detections)} flags · {len(p1)} P1 cross-source/compounding",
+            "detail": f"{len(detections)} flags · {len(p1)} P1 · {rc_count} root-cause analyses",
             "count": len(detections),
             "status": "completed",
         })
 
         det_map = {d.cluster_id: d for d in detections}
         insights = []
+        critic = InsightCriticAgent()
         for c in current_clusters:
             d = det_map.get(c.cluster_id)
             if d and d.priority in ("P1", "P2", "P3"):
+                a2a.handoff("detection", "insight", f"Draft recommendation for {d.priority} · {c.theme}")
                 ins = self.insight.run(c, d, scored, rules.version)
+                revised, _ = critic.critique_and_revise(
+                    self.db, run_id, c.cluster_id, week, ins.insight, ins.owner_suggested
+                )
+                ins = ins.model_copy(update={"insight": revised})
                 insights.append(ins)
+                a2a.done("insight", f"Recommendation drafted · owner: {ins.owner_suggested}")
                 self.db.add(self._insight_row(ins, run_id))
         steps.append({
             "id": "insight",
@@ -198,6 +256,7 @@ class Orchestrator:
             if s.channel == "disruption_notification" and s.week == week:
                 self.output.create_disruption_alert(self.db, run_id, week, s.site_id, s.text)
 
+        a2a.handoff("insight", "output", f"{len(insights)} insights → alerts & reports")
         alerts = self.output.distribute(
             self.db, run_id, week, current_clusters, detections, insights, coverage_report, lang_stats
         )
@@ -217,14 +276,17 @@ class Orchestrator:
                 if site_report:
                     log.payload_summary = f"{log.payload_summary} · file: {site_report.file_name}"
 
+        a2a.done("output", f"{len(alerts)} alerts · {len(reports)} reports")
+
         steps.append({
             "id": "output",
             "label": "Output & Distribution",
-            "detail": f"{len(alerts)} Teams alerts · digest · 21 site reports queued",
+            "detail": f"{len(alerts)} Teams alerts · digest · {len(reports)} reports queued",
             "count": len(alerts),
             "status": "completed",
         })
 
+        a2a.handoff("output", "explainability", "Plain-language pipeline narrative")
         explanation = self.explainability.run(
             week=week,
             run_id=run_id,
@@ -239,6 +301,7 @@ class Orchestrator:
             alerts_count=len(alerts),
             hero_cluster_id=p1[0].cluster_id if p1 else None,
         )
+        a2a.done("explainability", explanation.headline[:80])
         steps.append({
             "id": "explain",
             "label": "Explainability Agent",
@@ -246,6 +309,11 @@ class Orchestrator:
             "count": len(explanation.steps),
             "status": "completed",
         })
+        a2a.done("orchestrator", f"Pipeline complete · run {run_id}")
+
+        from app.agentic.coordinator import CoordinatorAgent
+
+        CoordinatorAgent().investigate_p1s_for_run(self.db, run_id)
 
         for item in translated:
             if item.week == week:
@@ -285,6 +353,7 @@ class Orchestrator:
             "insights": len(insights),
             "hero_cluster_id": hero_cluster_id,
             "explanation": explanation.model_dump(mode="json"),
+            "a2a_correlation_id": run_id,
         }
         self.db.commit()
 
@@ -302,6 +371,7 @@ class Orchestrator:
             hero_cluster_id=hero_cluster_id,
             outputs=outputs,
             explanation=explanation.model_dump(mode="json"),
+            a2a_correlation_id=run_id,
         )
 
     def _clear_pipeline_artifacts(self, db: Session) -> None:

@@ -1,0 +1,33 @@
+modules = ["nodejs-20", "python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+build = ["sh", "scripts/replit-build.sh"]
+run = ["sh", "scripts/replit-run.sh"]
+
+[[ports]]
+localPort = 8080
+externalPort = 80
+
+[env]
+PORT = "8080"
+RULES_PATH = "rules/rules.v1.yaml"
+DATABASE_URL = "sqlite:////home/runner/insight/data/insight.db"
+REPORTS_DIR = "/home/runner/insight/data/reports"
+AUTO_SEED = "true"
+ENABLE_SCHEDULER = "true"
+ENVIRONMENT = "production"
+
+[workflows]
+runButton = "Start Insight"
+
+[[workflows.workflow]]
+name = "Start Insight"
+mode = "sequential"
+author = 1
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sh scripts/replit-run.sh"

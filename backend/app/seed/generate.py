@@ -106,6 +106,50 @@ NORTHGATE_STAFF_KPI = (
     "POS terminal 3 intermittent. Roster gap flagged to site manager."
 )
 
+# Lakeside audio compounding
+LAKESIDE_AUDIO = {
+    "2026-W24": [
+        ("csat", 2, "Sound was muffled in auditorium 4 — dialogue hard to follow during quiet scenes."),
+    ],
+    "2026-W25": [
+        ("public_review", 2, "Volume too low for the whole film. Complained at candy bar but no change."),
+        ("guest_services_inbox", None, "Audio balance poor — effects loud but voices quiet. Lakeside Saturday 8pm."),
+    ],
+    "2026-W26": [
+        ("csat", 1, "Could barely hear dialogue in auditorium 2. Subtitles would have helped."),
+        ("public_review", 2, "Sound quality disappointing — crackling during previews then stayed quiet."),
+        ("contact_form", None, "Audio was unbalanced all evening. Several guests mentioned it in the foyer."),
+        ("social", None, "Lakeside audio is a joke lately — turn it up!"),
+    ],
+}
+
+LAKESIDE_STAFF_KPI = (
+    "Site KPI — Lakeside | Week 2026-W26\n"
+    "Auditorium 2: amplifier channel 3 reported intermittent. Guest complaints up 2x WoW. "
+    "Technician visit scheduled Thursday."
+)
+
+# Cityplaza cleanliness spike
+CITYPLAZA_CLEAN = [
+    ("Restrooms on level 1 were filthy before the matinee — no soap and overflowing bins.", 2),
+    ("Sticky floors throughout the lobby. Smell near the candy bar.", 1),
+    ("Toilets not cleaned between sessions — very disappointing for a family site.", 2),
+    ("Foyer bins overflowing after the Saturday rush. Needs more cleaning staff.", 2),
+]
+
+# Westgate positive arc
+WESTGATE_POSITIVE = [
+    ("Best cinema experience in months — spotless auditorium and great sound.", 5),
+    ("Manager personally checked our booking issue. Staff went above and beyond.", 5),
+    ("Premium recliners were perfect. Concessions fast and friendly.", 5),
+]
+
+# Fairmont ticketing (secondary site)
+FAIRMONT_TICKETING = [
+    ("Kiosk only option but two of three were offline. 20 minute queue.", 2),
+    ("Online booking didn't sync — had to queue anyway. Frustrating.", 2),
+]
+
 # Realistic F&B friction — varied wording, lexicon-driven classification
 FNB_GUEST = [
     ("Popcorn was lukewarm by the time we sat down — batch must have been sitting too long.", 2),
@@ -234,6 +278,34 @@ def generate() -> list[dict]:
             )
     add("staff", "kpi_email", "northgate", LATEST_WEEK, NORTHGATE_STAFF_KPI, theme_hint="ticketing_queue", sentiment_hint="negative")
 
+    # ── Lakeside audio compounding ──
+    for week, entries in LAKESIDE_AUDIO.items():
+        for channel, rating, text in entries:
+            add(
+                "guest", channel, "lakeside", week, text,
+                rating=rating, theme_hint="audio_sound", sentiment_hint="negative",
+                weekend_bias=week == LATEST_WEEK,
+            )
+    add("staff", "kpi_email", "lakeside", LATEST_WEEK, LAKESIDE_STAFF_KPI, theme_hint="audio_sound", sentiment_hint="negative")
+
+    # ── Cityplaza cleanliness ──
+    for text, rating in CITYPLAZA_CLEAN:
+        add(
+            "guest", random.choice(GUEST_CHANNELS), "cityplaza", LATEST_WEEK, text,
+            rating=rating, theme_hint="cleanliness", sentiment_hint="negative", weekend_bias=True,
+        )
+
+    # ── Westgate positive highlights ──
+    for text, rating in WESTGATE_POSITIVE:
+        add("guest", "csat", "westgate", LATEST_WEEK, text, rating=rating, weekend_bias=True)
+
+    # ── Fairmont ticketing friction ──
+    for text, rating in FAIRMONT_TICKETING:
+        add(
+            "guest", random.choice(["contact_form", "csat"]), "fairmont", LATEST_WEEK, text,
+            rating=rating, theme_hint="ticketing_queue", sentiment_hint="negative",
+        )
+
     # ── National F&B friction (lexicon classifies; no hints) ──
     for site in SITES:
         n = random.randint(2, 4)
@@ -306,7 +378,7 @@ def generate() -> list[dict]:
 
     # ── Weekly background noise across sites (lexicon-driven) ──
     for week in RECENT_WEEKS:
-        for site in random.sample(SITES, 10):
+        for site in random.sample(SITES, 14):
             text, _theme, rating = random.choice(BACKGROUND_GUEST)
             film = random.choice(FILMS)
             if random.random() < 0.4:
@@ -324,7 +396,7 @@ def generate() -> list[dict]:
         "Average experience. Would come back for the right film.",
         "Parking easy, session on time. Concessions a bit pricey.",
     ]
-    for site in random.sample(SITES, 12):
+    for site in random.sample(SITES, 16):
         add(
             "guest", "csat", site["id"], random.choice(RECENT_WEEKS),
             random.choice(neutral_csat), rating=3,

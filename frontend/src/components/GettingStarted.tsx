@@ -8,7 +8,7 @@ interface Props {
 
 export default function GettingStarted({ week, compact }: Props) {
   const steps = [
-    { icon: Play, label: 'Run the pipeline', desc: 'Process all feedback for the week', to: '/pipeline' },
+    { icon: Play, label: 'Agent Network', desc: 'Run pipeline & watch agents communicate', to: '/agents' },
     { icon: AlertTriangle, label: 'Review issues', desc: 'See P1 priorities & evidence', to: '/issues' },
     { icon: Download, label: 'Download reports', desc: 'Site manager HTML reports', to: '/reports' },
   ];
@@ -17,7 +17,7 @@ export default function GettingStarted({ week, compact }: Props) {
     return (
       <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-slate-700 flex flex-wrap items-center gap-2">
         <span className="font-medium text-slate-900">New here?</span>
-        <Link to="/pipeline" className="text-accent font-medium hover:underline">Run pipeline</Link>
+        <Link to="/agents" className="text-accent font-medium hover:underline">Run pipeline</Link>
         <span className="text-slate-400">→</span>
         <Link to="/issues" className="text-accent font-medium hover:underline">Check issues</Link>
         <span className="text-slate-400">→</span>

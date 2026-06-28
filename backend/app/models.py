@@ -200,3 +200,59 @@ class GeneratedReportRow(Base):
     recipient_email: Mapped[str] = mapped_column(String)
     file_name: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AgentMessageRow(Base):
+    __tablename__ = "agent_messages"
+    __table_args__ = (
+        Index("ix_agent_messages_correlation_ts", "correlation_id", "ts"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(DateTime, index=True)
+    correlation_id: Mapped[str] = mapped_column(String, index=True)
+    from_agent: Mapped[str] = mapped_column(String)
+    to_agent: Mapped[str] = mapped_column(String)
+    intent: Mapped[str] = mapped_column(String)
+    summary: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String)
+    payload_ref: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class TriggerRow(Base):
+    __tablename__ = "triggers"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    type: Mapped[str] = mapped_column(String, index=True)
+    source: Mapped[str] = mapped_column(String)
+    summary: Mapped[str] = mapped_column(Text)
+    ts: Mapped[datetime] = mapped_column(DateTime, index=True)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class AgentRunRow(Base):
+    __tablename__ = "agent_runs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    trigger_id: Mapped[str] = mapped_column(String, index=True)
+    goal: Mapped[str] = mapped_column(Text)
+    runner: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, index=True)
+    outcome: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ReasoningStepRow(Base):
+    __tablename__ = "reasoning_steps"
+    __table_args__ = (Index("ix_reasoning_steps_run_step", "run_id", "step_no"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    run_id: Mapped[str] = mapped_column(String, index=True)
+    step_no: Mapped[int] = mapped_column(Integer)
+    agent: Mapped[str] = mapped_column(String)
+    phase: Mapped[str] = mapped_column(String)
+    thought: Mapped[str] = mapped_column(Text)
+    action: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    observation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ts: Mapped[datetime] = mapped_column(DateTime, index=True)

@@ -34,7 +34,7 @@ export default function Overview({ week }: { week: string }) {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
           <p className="font-semibold text-slate-900">No data for {data.week} yet</p>
           <p className="text-sm text-slate-600 mt-2">Run the pipeline to populate this dashboard.</p>
-          <Link to="/pipeline" className="inline-block mt-4 bg-accent text-white px-5 py-2 rounded-lg text-sm font-medium">
+          <Link to="/agents" className="inline-block mt-4 bg-accent text-white px-5 py-2 rounded-lg text-sm font-medium">
             Run pipeline →
           </Link>
         </div>
@@ -192,7 +192,7 @@ export default function Overview({ week }: { week: string }) {
       <div className="grid sm:grid-cols-3 gap-3">
         <QuickLink to="/feed" title="Live Feed" desc="Browse every message" />
         <QuickLink to="/reports" title="Manager Reports" desc="Download site briefs" />
-        <QuickLink to="/pipeline" title="Pipeline Run" desc="Re-process a week" />
+        <QuickLink to="/agents" title="Agent Network" desc="Run pipeline & watch A2A" />
       </div>
     </div>
   );

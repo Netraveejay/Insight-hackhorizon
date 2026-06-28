@@ -37,3 +37,11 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "unit: fast isolated unit tests (no HTTP)",
+    "integration: DB + orchestrator integration tests",
+    "e2e: HTTP API end-to-end tests via TestClient",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

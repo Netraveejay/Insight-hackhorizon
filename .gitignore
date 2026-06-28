@@ -28,3 +28,4 @@ dist/
 backend/app/seed/data/
 backend/data/reports/
 backend/static/
+backend/tests/reports_out/

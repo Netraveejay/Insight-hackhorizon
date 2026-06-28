@@ -18,3 +18,23 @@
 :focus-visible {
   @apply outline-2 outline-offset-2 outline-blue-600;
 }
+
+/* Scrollbar for workflow communication panel — fixed gutter, no layout shift */
+.scrollbar-panel {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #64748b #1e293b;
+}
+.scrollbar-panel::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar-panel::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+.scrollbar-panel::-webkit-scrollbar-thumb {
+  background-color: #64748b;
+  border-radius: 4px;
+}
+.scrollbar-panel::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}

@@ -34,6 +34,46 @@ SITES = [
 
 SITE_BY_ID = {s["id"]: s for s in SITES}
 
+# Theatre operators — each may operate a different number of cinema sites.
+THEATRES = [
+    {
+        "id": "metro-cinemas",
+        "name": "Metro Cinemas Group",
+        "region": "Coastal & Central",
+        "site_ids": ["harbourview", "northgate", "riverside", "eastfield", "cityplaza"],
+    },
+    {
+        "id": "lakeshore",
+        "name": "Lakeshore Entertainment",
+        "region": "Midlands",
+        "site_ids": ["lakeside", "parkland", "westgate", "hillcrest", "meadowbrook"],
+    },
+    {
+        "id": "southbank-group",
+        "name": "Southbank Cinemas",
+        "region": "South",
+        "site_ids": ["southbank", "greenwood", "baytown", "fairmont"],
+    },
+    {
+        "id": "highland",
+        "name": "Highland Picture Houses",
+        "region": "North & West",
+        "site_ids": ["oakridge", "sunset", "kingsway", "pinehurst"],
+    },
+    {
+        "id": "valley",
+        "name": "Valley Theatre Co.",
+        "region": "East",
+        "site_ids": ["crestwood", "maplewood", "brookside"],
+    },
+]
+
+THEATRE_BY_ID = {t["id"]: t for t in THEATRES}
+SITE_TO_THEATRE: dict[str, str] = {}
+for _t in THEATRES:
+    for _sid in _t["site_ids"]:
+        SITE_TO_THEATRE[_sid] = _t["id"]
+
 GUEST_CHANNELS = ("csat", "guest_services_inbox", "contact_form", "public_review", "social")
 STAFF_CHANNELS = ("kpi_email", "disruption_notification")
 ALL_CHANNELS = GUEST_CHANNELS + STAFF_CHANNELS
@@ -169,6 +209,7 @@ class PipelineRunResult(BaseModel):
     hero_cluster_id: str | None = None
     outputs: list[dict[str, Any]] = Field(default_factory=list)
     explanation: dict[str, Any] | None = None
+    a2a_correlation_id: str | None = None
 
 
 class StepExplanation(BaseModel):

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./insight.db"
     openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
     rules_path: str = "rules/rules.v1.yaml"
     teams_webhook_url: str = ""
     cors_origins: str = "http://localhost:5173,http://localhost:3000"

@@ -3,7 +3,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, get_db
-from app.models import RunRow
+from app.models import AgentMessageRow, RunRow
 from app.orchestrator import Orchestrator
 
 router = APIRouter(tags=["pipeline"])
@@ -45,6 +45,45 @@ def explain_pipeline(week: str | None = None, db: Session = Depends(get_db)):
         "run_id": row.id,
         "week": row.week,
         "explanation": row.stats["explanation"],
+        "a2a_correlation_id": row.stats.get("a2a_correlation_id", row.id),
+    }
+
+
+@router.get("/pipeline/workflow")
+def pipeline_workflow(week: str | None = None, db: Session = Depends(get_db)):
+    """Return A2A messages for the most recent pipeline run."""
+    q = db.query(RunRow).filter(RunRow.status == "completed")
+    if week:
+        q = q.filter(RunRow.week == week)
+    row = q.order_by(desc(RunRow.completed_at)).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="No pipeline run yet")
+    cid = row.stats.get("a2a_correlation_id", row.id)
+    rows = (
+        db.query(AgentMessageRow)
+        .filter(AgentMessageRow.correlation_id == cid)
+        .order_by(AgentMessageRow.ts)
+        .limit(500)
+        .all()
+    )
+    return {
+        "run_id": row.id,
+        "week": row.week,
+        "correlation_id": cid,
+        "messages": [
+            {
+                "id": r.id,
+                "ts": r.ts.isoformat() + "Z",
+                "correlation_id": r.correlation_id,
+                "from_agent": r.from_agent,
+                "to_agent": r.to_agent,
+                "intent": r.intent,
+                "summary": r.summary,
+                "status": r.status,
+                "payload_ref": r.payload_ref,
+            }
+            for r in rows
+        ],
     }
 
 

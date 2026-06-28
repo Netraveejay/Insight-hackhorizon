@@ -28,7 +28,7 @@ export default function LiveFeed({ week }: { week: string }) {
             Run the pipeline to ingest guest &amp; staff messages, then return here to browse the live feed.
           </p>
           <Link
-            to="/pipeline"
+            to="/agents"
             className="inline-block mt-4 bg-accent text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
           >
             Run pipeline now →

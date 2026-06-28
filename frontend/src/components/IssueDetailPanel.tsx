@@ -6,9 +6,11 @@ import type { IssueDetail } from '../api';
 
 interface Props {
   detail: IssueDetail;
+  onInvestigate?: () => void;
+  investigating?: boolean;
 }
 
-export default function IssueDetailPanel({ detail }: Props) {
+export default function IssueDetailPanel({ detail, onInvestigate, investigating }: Props) {
   const rec = detail.recommendation;
 
   return (
@@ -26,6 +28,17 @@ export default function IssueDetailPanel({ detail }: Props) {
           {' · '}
           <span className="capitalize">{detail.confidence_band} confidence</span>
         </p>
+        {onInvestigate && (
+          <button
+            type="button"
+            onClick={onInvestigate}
+            disabled={investigating}
+            className="mt-3 flex items-center gap-2 text-sm bg-accent text-white px-3 py-1.5 rounded-lg disabled:opacity-60"
+          >
+            <Search size={14} />
+            {investigating ? 'Investigating…' : 'Investigate with agent'}
+          </button>
+        )}
       </div>
 
       {detail.root_cause && (

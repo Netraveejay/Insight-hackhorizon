@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api, Issue, IssueDetail } from '../api';
 import IssueRow from '../components/IssueRow';
 import IssueDetailPanel from '../components/IssueDetailPanel';
@@ -8,6 +9,19 @@ export default function Issues({ week }: { week: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<IssueDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [investigating, setInvestigating] = useState(false);
+  const navigate = useNavigate();
+
+  const investigate = async () => {
+    if (!selected) return;
+    setInvestigating(true);
+    try {
+      const res = await api.investigateRun(selected, week);
+      navigate(`/activity?run=${res.run_id}`);
+    } finally {
+      setInvestigating(false);
+    }
+  };
 
   useEffect(() => {
     api.issues(week).then((d) => {
@@ -64,7 +78,9 @@ export default function Issues({ week }: { week: string }) {
               Loading issue detail…
             </div>
           )}
-          {!loadingDetail && detail && <IssueDetailPanel detail={detail} />}
+          {!loadingDetail && detail && (
+            <IssueDetailPanel detail={detail} onInvestigate={investigate} investigating={investigating} />
+          )}
           {!loadingDetail && !detail && issues.length > 0 && (
             <div className="bg-slate-50 border border-dashed rounded-xl p-8 text-center text-slate-500 text-sm sticky top-4">
               Select an issue to view evidence

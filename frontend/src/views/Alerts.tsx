@@ -40,7 +40,7 @@ export default function Alerts({ week }: { week: string }) {
           </p>
           <p className="text-xs text-slate-500 mt-2">
             Alerts are generated from the weekly pipeline run.{' '}
-            <Link to="/pipeline" className="text-accent hover:underline">Re-run pipeline</Link>
+            <Link to="/agents" className="text-accent hover:underline">Re-run pipeline</Link>
             {' '}after loading production feedback via <code className="text-[11px]">FEEDBACK_FILE_PATH</code>.
           </p>
         </div>
